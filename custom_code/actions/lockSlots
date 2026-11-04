@@ -1,0 +1,121 @@
+// Automatic FlutterFlow imports
+import '/backend/backend.dart';
+import 'package:ff_theme/flutter_flow/flutter_flow_theme.dart';
+import '/flutter_flow/flutter_flow_util.dart';
+import '/custom_code/actions/index.dart'; // Imports other custom actions
+import '/flutter_flow/custom_functions.dart'; // Imports custom functions
+import 'package:flutter/material.dart';
+// Begin custom action code
+// DO NOT REMOVE OR MODIFY THE CODE ABOVE!
+
+import '/custom_code/actions/index.dart';
+import '/flutter_flow/custom_functions.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'dart:convert';
+
+Future<String> lockSlots(
+  List<String> selectedSlots,
+  String userId,
+  String cafeId,
+  String gameType,
+) async {
+  String debugInfo = '=== Lock Slots Debug Info ===\n';
+  debugInfo += 'Input Parameters:\n';
+  debugInfo += 'Selected Slots: $selectedSlots\n';
+  debugInfo += 'User ID: $userId\n';
+  debugInfo += 'Cafe ID: $cafeId\n';
+  debugInfo += 'Game Type: $gameType\n';
+
+  // Validate inputs
+  if (selectedSlots.isEmpty) {
+    debugInfo += 'Error: No slots selected\n';
+    return debugInfo;
+  }
+
+  if (userId.isEmpty) {
+    debugInfo += 'Error: No user ID provided\n';
+    return debugInfo;
+  }
+
+  if (cafeId.isEmpty) {
+    debugInfo += 'Error: No cafe ID provided\n';
+    return debugInfo;
+  }
+
+  if (gameType.isEmpty) {
+    debugInfo += 'Error: No game type provided\n';
+    return debugInfo;
+  }
+
+  const maxRetries = 3;
+  int retryCount = 0;
+  bool success = false;
+
+  while (retryCount < maxRetries && !success) {
+    try {
+      debugInfo += '\nAttempt ${retryCount + 1} of $maxRetries\n';
+
+      // Get the Firebase Functions instance - using the same pattern as createRazorpayOrder
+      final functions = FirebaseFunctions.instance;
+      debugInfo += 'Initialized Firebase Functions\n';
+
+      // Prepare the data
+      final data = {
+        'selectedSlots': selectedSlots,
+        'userId': userId,
+        'cafeId': cafeId,
+        'gameType': gameType,
+      };
+      debugInfo += 'Sending data: ${json.encode(data)}\n';
+
+      try {
+        // Call the function with the same pattern as createRazorpayOrder
+        final result =
+            await functions.httpsCallable('lockSlotsTemporarily').call(data);
+        debugInfo += 'Response received: ${json.encode(result.data)}\n';
+
+        if (result.data == null) {
+          throw Exception('Null response received from function');
+        }
+
+        final responseData = result.data as Map<String, dynamic>;
+        success = responseData['success'] ?? false;
+        debugInfo += 'Success: $success\n';
+
+        if (!success) {
+          final error = responseData['error'] ?? 'Unknown error';
+          debugInfo += 'Error: $error\n';
+          if (retryCount < maxRetries - 1) {
+            debugInfo += 'Retrying in 2 seconds...\n';
+            await Future.delayed(Duration(seconds: 2));
+          }
+        }
+      } catch (callError) {
+        debugInfo += 'Error calling function: ${callError.toString()}\n';
+        if (callError is FirebaseFunctionsException) {
+          debugInfo += 'Firebase Functions Error Code: ${callError.code}\n';
+          debugInfo +=
+              'Firebase Functions Error Details: ${callError.details}\n';
+        }
+        if (retryCount < maxRetries - 1) {
+          debugInfo += 'Retrying in 2 seconds...\n';
+          await Future.delayed(Duration(seconds: 2));
+        }
+      }
+    } catch (e) {
+      debugInfo += 'Error in main try block: ${e.toString()}\n';
+      if (retryCount < maxRetries - 1) {
+        debugInfo += 'Retrying in 2 seconds...\n';
+        await Future.delayed(Duration(seconds: 2));
+      }
+    }
+    retryCount++;
+  }
+
+  debugInfo += '\nFinal Status:\n';
+  debugInfo += 'Attempts: $retryCount\n';
+  debugInfo += 'Success: $success\n';
+  debugInfo += '=== End Lock Slots Debug Info ===\n';
+
+  return debugInfo;
+}

@@ -1,0 +1,107 @@
+// Automatic FlutterFlow imports
+import '/backend/backend.dart';
+import 'package:ff_theme/flutter_flow/flutter_flow_theme.dart';
+import '/flutter_flow/flutter_flow_util.dart';
+import '/custom_code/actions/index.dart'; // Imports other custom actions
+import '/flutter_flow/custom_functions.dart'; // Imports custom functions
+import 'package:flutter/material.dart';
+// Begin custom action code
+// DO NOT REMOVE OR MODIFY THE CODE ABOVE!
+
+import '/custom_code/actions/index.dart';
+import '/flutter_flow/custom_functions.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'dart:async'; // Add this import for Completer
+
+Future<dynamic> processRazorpayPayment(
+  String orderId,
+  double amount,
+  String userName,
+  String userEmail,
+  String userPhone,
+  String cafeId,
+  String gameType,
+) async {
+  try {
+    // Initialize Razorpay
+    final razorpay = Razorpay();
+
+    // Set up payment options
+    final options = {
+      'key': 'YOUR_RAZORPAY_KEY_ID',
+      'amount': (amount * 100).toInt(), // Convert to paise
+      'name': 'Kaboom Gaming',
+      'description': 'Slot Booking Payment - $cafeId - $gameType',
+      'order_id': orderId,
+      'prefill': {
+        'contact': userPhone,
+        'email': userEmail,
+        'name': userName,
+      },
+      'external': {
+        'wallets': ['paytm']
+      },
+      'notes': {
+        'cafeId': cafeId,
+        'gameType': gameType,
+      }
+    };
+
+    // Create a completer to handle the async response
+    final completer = Completer<Map<String, dynamic>>();
+
+    // Set up event handlers
+    razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS,
+        (PaymentSuccessResponse response) {
+      completer.complete({
+        'status': 'success',
+        'message': 'Payment successful!',
+        'paymentId': response.paymentId,
+        'orderId': response.orderId,
+        'cafeId': cafeId,
+        'gameType': gameType,
+      });
+    });
+
+    razorpay.on(Razorpay.EVENT_PAYMENT_ERROR,
+        (PaymentFailureResponse response) {
+      completer.complete({
+        'status': 'failed',
+        'message': 'Payment failed: ${response.message}',
+        'error': response.message,
+        'cafeId': cafeId,
+        'gameType': gameType,
+      });
+    });
+
+    razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET,
+        (ExternalWalletResponse response) {
+      completer.complete({
+        'status': 'external_wallet',
+        'message': 'External wallet selected: ${response.walletName}',
+        'wallet': response.walletName,
+        'cafeId': cafeId,
+        'gameType': gameType,
+      });
+    });
+
+    // Open the Razorpay payment screen
+    razorpay.open(options);
+
+    // Wait for the payment response
+    final result = await completer.future;
+
+    // Clean up
+    razorpay.clear();
+
+    return result;
+  } catch (e) {
+    return {
+      'status': 'error',
+      'message': 'An error occurred',
+      'error': e.toString(),
+      'cafeId': cafeId,
+      'gameType': gameType,
+    };
+  }
+}
